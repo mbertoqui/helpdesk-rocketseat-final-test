@@ -1,0 +1,97 @@
+// Sistema HelpDesk - Schema do Banco de Dados
+// Desenvolvido por: Matheus Bertoqui
+// Data: 2026
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+  CLIENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  avatar    String?
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Campos específicos para técnicos
+  availableHours String[] // Array de horários disponíveis
+
+  // Relacionamentos
+  clientTickets     Ticket[] @relation("ClientTickets")
+  technicianTickets Ticket[] @relation("TechnicianTickets")
+
+  @@map("users")
+}
+
+model Service {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal @db.Decimal(10, 2)
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  ticketServices TicketService[]
+
+  @@map("services")
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  status      TicketStatus @default(OPEN)
+  totalPrice  Decimal      @db.Decimal(10, 2) @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relacionamentos
+  clientId     String
+  client       User @relation("ClientTickets", fields: [clientId], references: [id], onDelete: Cascade)
+  
+  technicianId String
+  technician   User @relation("TechnicianTickets", fields: [technicianId], references: [id])
+
+  ticketServices TicketService[]
+
+  @@map("tickets")
+}
+
+model TicketService {
+  id       String @id @default(cuid())
+  quantity Int    @default(1)
+  price    Decimal @db.Decimal(10, 2)
+
+  // Relacionamentos
+  ticketId  String
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  @@map("ticket_services")
+}
